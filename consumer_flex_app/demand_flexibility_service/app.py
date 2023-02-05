@@ -1,4 +1,5 @@
 import datetime
+import gc
 from functools import partial
 
 import pandas as pd
@@ -19,6 +20,8 @@ from consumer_flex_app.demand_flexibility_service.transform import (
     get_event_summary,
     get_metrics_by_dfs_event,
 )
+
+gc.enable()
 
 
 def page_header() -> None:
@@ -224,6 +227,8 @@ def main() -> None:
             tab_specific_event,
             day_ahead_flex_by_event_day_region.loc[selected_dfs_event],
         )
+
+    gc.collect()
 
 
 if __name__ == "__main__":
