@@ -2,6 +2,7 @@ import enum
 
 import geopandas as gpd
 import pandas as pd
+import streamlit as st
 from clumper import Clumper
 
 
@@ -67,6 +68,7 @@ def get_dfs_dataframes(paths) -> pd.DataFrame:
     return bids, requirements, summary
 
 
+@st.experimental_memo(persist="disk")
 def get_dno_regions() -> pd.DataFrame:
     SHAPEFILE_FILEPATH = (
         Clumper.read_json(ESO_DNO_LICENSE_AREAS_DATAPACKAGE)

@@ -1,3 +1,4 @@
+import datetime
 from functools import partial
 
 import pandas as pd
@@ -52,13 +53,12 @@ def page_header() -> None:
 
 
 # Load in the data
-@st.experimental_memo
-def get_all_data():
+@st.experimental_memo(ttl=datetime.timedelta(hours=1))
+def get_dfs_data():
     paths = get_dfs_paths()
     bids, requirements, summary = get_dfs_dataframes(paths)
-    dno_regions = get_dno_regions()
     event_summary = get_event_summary(requirements, summary)
-    return dno_regions, event_summary, bids
+    return event_summary, bids
 
 
 def get_previous_dfs_date(dfs_date: str, all_dfs_dates: list[str]) -> str:
@@ -68,7 +68,8 @@ def get_previous_dfs_date(dfs_date: str, all_dfs_dates: list[str]) -> str:
 
 def main() -> None:
     global get_previous_dfs_date
-    dno_regions, event_summary, bids = get_all_data()
+    dno_regions = get_dno_regions()
+    event_summary, bids = get_dfs_data()
     dfs_metrics = get_metrics_by_dfs_event(bids, event_summary)
 
     DFS_DATES: list = sorted(event_summary["Date"].unique())
