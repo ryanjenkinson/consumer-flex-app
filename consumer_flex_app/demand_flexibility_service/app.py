@@ -3,16 +3,9 @@ from functools import partial
 import pandas as pd
 import streamlit as st
 
-from consumer_flex_app.demand_flexibility_service.loaders import (
-    get_dfs_dataframes,
-    get_dfs_paths,
-    get_dno_regions,
-)
-from consumer_flex_app.demand_flexibility_service.render import (
-    render_map,
-    render_metrics,
-)
-from consumer_flex_app.demand_flexibility_service.transform import (
+from .loaders import get_dfs_dataframes, get_dfs_paths, get_dno_regions
+from .render import render_map, render_metrics
+from .transform import (
     get_bids_by_provider_settlement_period,
     get_event_by_geometry,
     get_event_summary,
