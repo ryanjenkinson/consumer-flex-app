@@ -1,3 +1,4 @@
+import datetime
 from functools import partial
 
 import pandas as pd
@@ -52,7 +53,7 @@ def page_header() -> None:
 
 
 # Load in the data
-@st.experimental_memo
+@st.experimental_memo(ttl=datetime.timedelta(hours=1))
 def get_dfs_data():
     paths = get_dfs_paths()
     bids, requirements, summary = get_dfs_dataframes(paths)
