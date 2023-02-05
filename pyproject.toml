@@ -10,7 +10,6 @@ packages = [{include = "consumer_flex_app"}]
 python = "^3.10"
 pandas = "^1.5.3"
 streamlit = "^1.17.0"
-requests = "^2.28.2"
 clumper = "^0.2.15"
 meteostat = "^1.6.5"
 geopandas = "^0.12.2"
