@@ -1,3 +1,4 @@
+import gc
 import math
 
 import geopandas as gpd
@@ -6,6 +7,8 @@ import pydeck as pdk
 import seaborn as sns
 import streamlit as st
 from millify import millify
+
+gc.enable()
 
 ENERGY_PREFIXES = ["kWh", "MWh", "GWh"]
 POWER_PREFIXES = ["kW", "MW", "GW"]
@@ -165,6 +168,7 @@ def render_metrics(
             """
         )
 
+    gc.collect()
     return None
 
 
@@ -210,3 +214,5 @@ def render_map(tab, gdf: gpd.GeoDataFrame):
         """
         )
     tab.pydeck_chart(deck, use_container_width=True)
+    gc.collect()
+    return None
