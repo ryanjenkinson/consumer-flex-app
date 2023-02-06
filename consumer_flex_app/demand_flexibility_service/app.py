@@ -64,20 +64,19 @@ def get_dfs_data():
     return event_summary, bids
 
 
-def get_previous_dfs_date(dfs_date: str, all_dfs_dates: list[str]) -> str:
+def _get_previous_dfs_date(dfs_date: str, all_dfs_dates: list[str]) -> str:
     # If the specified dfs_date is first in the list, the previous one equals itself
     return all_dfs_dates[max(0, all_dfs_dates.index(dfs_date) - 1)]
 
 
 def main() -> None:
-    global get_previous_dfs_date
     dno_regions = get_dno_regions()
     event_summary, bids = get_dfs_data()
     dfs_metrics = get_metrics_by_dfs_event(bids, event_summary)
 
     DFS_DATES: list = sorted(event_summary["Date"].unique())
     LATEST_DFS_EVENT_DATE = DFS_DATES[-1]
-    get_previous_dfs_date = partial(get_previous_dfs_date, all_dfs_dates=DFS_DATES)
+    get_previous_dfs_date = partial(_get_previous_dfs_date, all_dfs_dates=DFS_DATES)
 
     tab_overall, tab_latest_event, tab_specific_event, tab_compare_event = st.tabs(
         ["Overall", "Latest DFS Event", "Specific DFS Event", "Compare DFS Events"]
