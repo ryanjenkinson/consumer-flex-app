@@ -1,4 +1,5 @@
 import pandas as pd
+import streamlit as st
 
 _forecast_cols = [
     # Day-ahead forecasts
@@ -67,6 +68,7 @@ def _append_settlement_periods(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+@st.experimental_memo
 def get_bids_by_provider_event(bids: pd.DataFrame) -> pd.DataFrame:
     bids_by_provider_settlement_period = (
         bids.pipe(_append_settlement_periods)
@@ -82,6 +84,7 @@ def get_bids_by_provider_event(bids: pd.DataFrame) -> pd.DataFrame:
     return bids_by_provider_event
 
 
+@st.experimental_memo
 def get_event_summary(
     requirements: pd.DataFrame,
     summary: pd.DataFrame,
@@ -114,6 +117,7 @@ def get_event_summary(
     return event_summary
 
 
+@st.experimental_memo
 def get_metrics_by_dfs_event(
     bids: pd.DataFrame,
     event_summary: pd.DataFrame,
@@ -191,7 +195,12 @@ def _get_event_by_geometry(bids: pd.DataFrame) -> pd.DataFrame:
     return event_by_geography
 
 
-def get_regional_flex(dno_regions, bids, dfs_metrics):
+@st.experimental_memo
+def get_regional_flex(
+    dno_regions,
+    bids,
+    dfs_metrics,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     events_by_geometry = _get_event_by_geometry(bids)
     day_ahead_flex_by_event_day_region = pd.merge(
         dno_regions,
