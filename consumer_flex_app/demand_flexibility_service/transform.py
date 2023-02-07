@@ -57,7 +57,7 @@ DFS_NAME_TO_DNO_NAME_MAPPING = {
 }
 
 
-def append_settlement_periods(df: pd.DataFrame) -> pd.DataFrame:
+def _append_settlement_periods(df: pd.DataFrame) -> pd.DataFrame:
     df["settlement_period_start"] = pd.to_datetime(
         df["Date"] + " " + df["From (GMT)"]
     ).dt.tz_localize("Europe/London")
@@ -69,7 +69,7 @@ def append_settlement_periods(df: pd.DataFrame) -> pd.DataFrame:
 
 def get_bids_by_provider_event(bids: pd.DataFrame) -> pd.DataFrame:
     bids_by_provider_settlement_period = (
-        bids.pipe(append_settlement_periods)
+        bids.pipe(_append_settlement_periods)
         .groupby(
             ["Date", "DFS Provider", "settlement_period_start", "settlement_period_end"]
         )
@@ -93,9 +93,9 @@ def get_event_summary(
     }
     event_summary = pd.merge(
         requirements.rename(columns=requirements_column_renames).pipe(
-            append_settlement_periods
+            _append_settlement_periods
         ),
-        summary.pipe(append_settlement_periods),
+        summary.pipe(_append_settlement_periods),
         on=[
             "Date",
             "From (GMT)",
@@ -160,7 +160,7 @@ def get_metrics_by_dfs_event(
     return pd.concat([dfs_provider_metrics, event_metrics], axis=1)
 
 
-def get_event_by_geometry(bids: pd.DataFrame) -> pd.DataFrame:
+def _get_event_by_geometry(bids: pd.DataFrame) -> pd.DataFrame:
     def _get_forecast_type(variable: str) -> str | None:
         if variable in _forecast_cols:
             if "D0" in variable:
@@ -192,7 +192,7 @@ def get_event_by_geometry(bids: pd.DataFrame) -> pd.DataFrame:
 
 
 def get_regional_flex(dno_regions, bids, dfs_metrics):
-    events_by_geometry = get_event_by_geometry(bids)
+    events_by_geometry = _get_event_by_geometry(bids)
     day_ahead_flex_by_event_day_region = pd.merge(
         dno_regions,
         events_by_geometry.query("forecast_type == 'Day Ahead'"),
