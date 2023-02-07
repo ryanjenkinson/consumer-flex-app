@@ -5,7 +5,7 @@ from functools import partial
 import pandas as pd
 import streamlit as st
 
-from consumer_flex_app.demand_flexibility_service.loaders import (
+from consumer_flex_app.demand_flexibility_service.extract import (
     get_dfs_dataframes,
     get_dfs_paths,
     get_dno_regions,
