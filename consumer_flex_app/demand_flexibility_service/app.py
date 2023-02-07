@@ -2,7 +2,6 @@ import datetime
 import gc
 from functools import partial
 
-import pandas as pd
 import streamlit as st
 
 from consumer_flex_app.demand_flexibility_service.extract import (
@@ -15,10 +14,10 @@ from consumer_flex_app.demand_flexibility_service.render import (
     render_metrics,
 )
 from consumer_flex_app.demand_flexibility_service.transform import (
-    get_bids_by_provider_settlement_period,
-    get_event_by_geometry,
+    get_bids_by_provider_event,
     get_event_summary,
     get_metrics_by_dfs_event,
+    get_regional_flex,
 )
 
 gc.enable()
@@ -197,41 +196,11 @@ if __name__ == "__main__":
     dno_regions = get_dno_regions()
     event_summary, bids = get_dfs_data()
     dfs_metrics = get_metrics_by_dfs_event(bids, event_summary)
-    bids_by_provider_settlement_period = get_bids_by_provider_settlement_period(bids)
-    total_bids_by_date_provider = bids_by_provider_settlement_period.groupby(
-        ["Date", "DFS Provider"]
-    )["D0 Total"].sum()
-    events_by_geometry = get_event_by_geometry(bids)
-    day_ahead_flex_by_event_day_region = pd.merge(
-        dno_regions,
-        events_by_geometry.query("forecast_type == 'Day Ahead'"),
-        left_on="Name",
-        right_on="dno_region_name",
-        how="inner",
-    ).set_index("date")
-    day_ahead_flex_by_event_day_region = pd.merge(
-        day_ahead_flex_by_event_day_region,
-        dfs_metrics["duration_hours"],
-        left_index=True,
-        right_index=True,
-    )
-    day_ahead_flex_by_event_day_region["flex_mwh"] = (
-        day_ahead_flex_by_event_day_region["value"] * dfs_metrics["duration_hours"]
-    )
-    day_ahead_flex_cumulative_by_region = (
-        day_ahead_flex_by_event_day_region.groupby("dno_region_name")[
-            ["value", "flex_mwh"]
-        ]
-        .agg({"value": "median", "flex_mwh": "sum"})
-        .round()
-    )
-    day_ahead_flex_cumulative_by_region = pd.merge(
-        dno_regions,
+    total_bids_by_date_provider = get_bids_by_provider_event(bids)
+    (
         day_ahead_flex_cumulative_by_region,
-        left_on="Name",
-        right_index=True,
-        how="inner",
-    )
+        day_ahead_flex_by_event_day_region,
+    ) = get_regional_flex(dno_regions, bids, dfs_metrics)
     # Run the main loop
     main(
         event_summary,

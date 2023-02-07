@@ -67,19 +67,19 @@ def append_settlement_periods(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def get_bids_by_provider_settlement_period(bids: pd.DataFrame) -> pd.DataFrame:
+def get_bids_by_provider_event(bids: pd.DataFrame) -> pd.DataFrame:
     bids_by_provider_settlement_period = (
         bids.pipe(append_settlement_periods)
         .groupby(
             ["Date", "DFS Provider", "settlement_period_start", "settlement_period_end"]
         )
         .agg(BID_AGGREGATIONS)
+        .reset_index()
     )
-    # bids_by_provider_settlement_period.columns = [
-    #     f"{column_name} [{aggregation}]"
-    #     for column_name, aggregation in bids_by_provider_settlement_period.columns
-    # ]
-    return bids_by_provider_settlement_period.reset_index()
+    bids_by_provider_event = bids_by_provider_settlement_period.groupby(
+        ["Date", "DFS Provider"]
+    )["D0 Total"].sum()
+    return bids_by_provider_event
 
 
 def get_event_summary(
@@ -189,3 +189,38 @@ def get_event_by_geometry(bids: pd.DataFrame) -> pd.DataFrame:
         .map(DFS_NAME_TO_DNO_NAME_MAPPING.get)
     )
     return event_by_geography
+
+
+def get_regional_flex(dno_regions, bids, dfs_metrics):
+    events_by_geometry = get_event_by_geometry(bids)
+    day_ahead_flex_by_event_day_region = pd.merge(
+        dno_regions,
+        events_by_geometry.query("forecast_type == 'Day Ahead'"),
+        left_on="Name",
+        right_on="dno_region_name",
+        how="inner",
+    ).set_index("date")
+    day_ahead_flex_by_event_day_region = pd.merge(
+        day_ahead_flex_by_event_day_region,
+        dfs_metrics["duration_hours"],
+        left_index=True,
+        right_index=True,
+    )
+    day_ahead_flex_by_event_day_region["flex_mwh"] = (
+        day_ahead_flex_by_event_day_region["value"] * dfs_metrics["duration_hours"]
+    )
+    day_ahead_flex_cumulative_by_region = (
+        day_ahead_flex_by_event_day_region.groupby("dno_region_name")[
+            ["value", "flex_mwh"]
+        ]
+        .agg({"value": "median", "flex_mwh": "sum"})
+        .round()
+    )
+    day_ahead_flex_cumulative_by_region = pd.merge(
+        dno_regions,
+        day_ahead_flex_cumulative_by_region,
+        left_on="Name",
+        right_index=True,
+        how="inner",
+    )
+    return day_ahead_flex_cumulative_by_region, day_ahead_flex_by_event_day_region
