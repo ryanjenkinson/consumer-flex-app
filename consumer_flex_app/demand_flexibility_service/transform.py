@@ -84,7 +84,6 @@ def get_bids_by_provider_event(bids: pd.DataFrame) -> pd.DataFrame:
     return bids_by_provider_event
 
 
-@st.experimental_memo
 def get_event_summary(
     requirements: pd.DataFrame,
     summary: pd.DataFrame,
@@ -117,7 +116,6 @@ def get_event_summary(
     return event_summary
 
 
-@st.experimental_memo
 def get_metrics_by_dfs_event(
     bids: pd.DataFrame,
     event_summary: pd.DataFrame,
@@ -195,7 +193,6 @@ def _get_event_by_geometry(bids: pd.DataFrame) -> pd.DataFrame:
     return event_by_geography
 
 
-@st.experimental_memo
 def get_regional_flex(
     dno_regions,
     bids,

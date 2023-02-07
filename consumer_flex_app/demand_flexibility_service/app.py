@@ -56,11 +56,24 @@ def page_header() -> None:
 
 # Load in the data
 @st.experimental_memo(ttl=datetime.timedelta(hours=1))
-def get_dfs_data():
+def get_all_data():
+    dno_regions = get_dno_regions()
     paths = get_dfs_paths()
     bids, requirements, summary = get_dfs_dataframes(paths)
     event_summary = get_event_summary(requirements, summary)
-    return event_summary, bids
+    dfs_metrics = get_metrics_by_dfs_event(bids, event_summary)
+    total_bids_by_date_provider = get_bids_by_provider_event(bids)
+    (
+        day_ahead_flex_cumulative_by_region,
+        day_ahead_flex_by_event_day_region,
+    ) = get_regional_flex(dno_regions, bids, dfs_metrics)
+    return (
+        event_summary,
+        dfs_metrics,
+        total_bids_by_date_provider,
+        day_ahead_flex_by_event_day_region,
+        day_ahead_flex_cumulative_by_region,
+    )
 
 
 def _get_previous_dfs_date(dfs_date: str, all_dfs_dates: list[str]) -> str:
@@ -193,14 +206,13 @@ def main(
 if __name__ == "__main__":
     page_header()
     # Get all the datasets
-    dno_regions = get_dno_regions()
-    event_summary, bids = get_dfs_data()
-    dfs_metrics = get_metrics_by_dfs_event(bids, event_summary)
-    total_bids_by_date_provider = get_bids_by_provider_event(bids)
     (
-        day_ahead_flex_cumulative_by_region,
+        event_summary,
+        dfs_metrics,
+        total_bids_by_date_provider,
         day_ahead_flex_by_event_day_region,
-    ) = get_regional_flex(dno_regions, bids, dfs_metrics)
+        day_ahead_flex_cumulative_by_region,
+    ) = get_all_data()
     # Run the main loop
     main(
         event_summary,
