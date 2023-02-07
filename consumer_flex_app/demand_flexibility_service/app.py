@@ -69,11 +69,13 @@ def _get_previous_dfs_date(dfs_date: str, all_dfs_dates: list[str]) -> str:
     return all_dfs_dates[max(0, all_dfs_dates.index(dfs_date) - 1)]
 
 
-def main() -> None:
-    dno_regions = get_dno_regions()
-    event_summary, bids = get_dfs_data()
-    dfs_metrics = get_metrics_by_dfs_event(bids, event_summary)
-
+def main(
+    event_summary,
+    dfs_metrics,
+    total_bids_by_date_provider,
+    day_ahead_flex_by_event_day_region,
+    day_ahead_flex_cumulative_by_region,
+) -> None:
     DFS_DATES: list = sorted(event_summary["Date"].unique())
     LATEST_DFS_EVENT_DATE = DFS_DATES[-1]
     get_previous_dfs_date = partial(_get_previous_dfs_date, all_dfs_dates=DFS_DATES)
@@ -157,16 +159,10 @@ def main() -> None:
     )
 
     tab_overall.write("## 🤝 Bids by provider")
-
-    bids_by_provider_settlement_period = get_bids_by_provider_settlement_period(bids)
-    total_by_date_provider = bids_by_provider_settlement_period.groupby(
-        ["Date", "DFS Provider"]
-    )["D0 Total"].sum()
-
     tab_overall.write("### 👥 By provider")
     tab_overall.write("The top 3 providers of flexibility overall on the DFS are:")
     tab_overall.table(
-        total_by_date_provider.groupby(level="DFS Provider")
+        total_bids_by_date_provider.groupby(level="DFS Provider")
         .sum()
         .round()
         .astype(int)
@@ -174,17 +170,37 @@ def main() -> None:
         .rename("Forecasted Flexibility (D0) [MWh]")
     )
     tab_overall.bar_chart(
-        total_by_date_provider.groupby(level="DFS Provider")
+        total_bids_by_date_provider.groupby(level="DFS Provider")
         .sum()
         .rename("Procured Flexibility [MWh]")
         .round(2)
     )
 
     tab_overall.write("### 🗓️ By date and provider")
-    tab_overall.bar_chart(total_by_date_provider.unstack().round(2))
+    tab_overall.bar_chart(total_bids_by_date_provider.unstack().round(2))
+    render_map(tab_overall, day_ahead_flex_cumulative_by_region)
+    render_map(
+        tab_latest_event, day_ahead_flex_by_event_day_region.loc[LATEST_DFS_EVENT_DATE]
+    )
+    if selected_dfs_event:
+        render_map(
+            tab_specific_event,
+            day_ahead_flex_by_event_day_region.loc[selected_dfs_event],
+        )
 
-    # Events by region - will be on all tabs except the comparison one
-    # TODO: This data transformation and prep is a bit hacky. Redo
+    gc.collect()
+
+
+if __name__ == "__main__":
+    page_header()
+    # Get all the datasets
+    dno_regions = get_dno_regions()
+    event_summary, bids = get_dfs_data()
+    dfs_metrics = get_metrics_by_dfs_event(bids, event_summary)
+    bids_by_provider_settlement_period = get_bids_by_provider_settlement_period(bids)
+    total_bids_by_date_provider = bids_by_provider_settlement_period.groupby(
+        ["Date", "DFS Provider"]
+    )["D0 Total"].sum()
     events_by_geometry = get_event_by_geometry(bids)
     day_ahead_flex_by_event_day_region = pd.merge(
         dno_regions,
@@ -216,20 +232,11 @@ def main() -> None:
         right_index=True,
         how="inner",
     )
-
-    render_map(tab_overall, day_ahead_flex_cumulative_by_region)
-    render_map(
-        tab_latest_event, day_ahead_flex_by_event_day_region.loc[LATEST_DFS_EVENT_DATE]
+    # Run the main loop
+    main(
+        event_summary,
+        dfs_metrics,
+        total_bids_by_date_provider,
+        day_ahead_flex_by_event_day_region,
+        day_ahead_flex_cumulative_by_region,
     )
-    if selected_dfs_event:
-        render_map(
-            tab_specific_event,
-            day_ahead_flex_by_event_day_region.loc[selected_dfs_event],
-        )
-
-    gc.collect()
-
-
-if __name__ == "__main__":
-    page_header()
-    main()
