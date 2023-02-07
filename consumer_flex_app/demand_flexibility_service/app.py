@@ -2,10 +2,9 @@ import datetime
 import gc
 from functools import partial
 
-import pandas as pd
 import streamlit as st
 
-from consumer_flex_app.demand_flexibility_service.loaders import (
+from consumer_flex_app.demand_flexibility_service.extract import (
     get_dfs_dataframes,
     get_dfs_paths,
     get_dno_regions,
@@ -15,10 +14,10 @@ from consumer_flex_app.demand_flexibility_service.render import (
     render_metrics,
 )
 from consumer_flex_app.demand_flexibility_service.transform import (
-    get_bids_by_provider_settlement_period,
-    get_event_by_geometry,
+    get_bids_by_provider_event,
     get_event_summary,
     get_metrics_by_dfs_event,
+    get_regional_flex,
 )
 
 gc.enable()
@@ -57,11 +56,24 @@ def page_header() -> None:
 
 # Load in the data
 @st.experimental_memo(ttl=datetime.timedelta(hours=1))
-def get_dfs_data():
+def get_all_data():
+    dno_regions = get_dno_regions()
     paths = get_dfs_paths()
     bids, requirements, summary = get_dfs_dataframes(paths)
     event_summary = get_event_summary(requirements, summary)
-    return event_summary, bids
+    dfs_metrics = get_metrics_by_dfs_event(bids, event_summary)
+    total_bids_by_date_provider = get_bids_by_provider_event(bids)
+    (
+        day_ahead_flex_cumulative_by_region,
+        day_ahead_flex_by_event_day_region,
+    ) = get_regional_flex(dno_regions, bids, dfs_metrics)
+    return (
+        event_summary,
+        dfs_metrics,
+        total_bids_by_date_provider,
+        day_ahead_flex_by_event_day_region,
+        day_ahead_flex_cumulative_by_region,
+    )
 
 
 def _get_previous_dfs_date(dfs_date: str, all_dfs_dates: list[str]) -> str:
@@ -69,11 +81,13 @@ def _get_previous_dfs_date(dfs_date: str, all_dfs_dates: list[str]) -> str:
     return all_dfs_dates[max(0, all_dfs_dates.index(dfs_date) - 1)]
 
 
-def main() -> None:
-    dno_regions = get_dno_regions()
-    event_summary, bids = get_dfs_data()
-    dfs_metrics = get_metrics_by_dfs_event(bids, event_summary)
-
+def main(
+    event_summary,
+    dfs_metrics,
+    total_bids_by_date_provider,
+    day_ahead_flex_by_event_day_region,
+    day_ahead_flex_cumulative_by_region,
+) -> None:
     DFS_DATES: list = sorted(event_summary["Date"].unique())
     LATEST_DFS_EVENT_DATE = DFS_DATES[-1]
     get_previous_dfs_date = partial(_get_previous_dfs_date, all_dfs_dates=DFS_DATES)
@@ -157,16 +171,10 @@ def main() -> None:
     )
 
     tab_overall.write("## 🤝 Bids by provider")
-
-    bids_by_provider_settlement_period = get_bids_by_provider_settlement_period(bids)
-    total_by_date_provider = bids_by_provider_settlement_period.groupby(
-        ["Date", "DFS Provider"]
-    )["D0 Total"].sum()
-
     tab_overall.write("### 👥 By provider")
     tab_overall.write("The top 3 providers of flexibility overall on the DFS are:")
     tab_overall.table(
-        total_by_date_provider.groupby(level="DFS Provider")
+        total_bids_by_date_provider.groupby(level="DFS Provider")
         .sum()
         .round()
         .astype(int)
@@ -174,49 +182,14 @@ def main() -> None:
         .rename("Forecasted Flexibility (D0) [MWh]")
     )
     tab_overall.bar_chart(
-        total_by_date_provider.groupby(level="DFS Provider")
+        total_bids_by_date_provider.groupby(level="DFS Provider")
         .sum()
         .rename("Procured Flexibility [MWh]")
         .round(2)
     )
 
     tab_overall.write("### 🗓️ By date and provider")
-    tab_overall.bar_chart(total_by_date_provider.unstack().round(2))
-
-    # Events by region - will be on all tabs except the comparison one
-    # TODO: This data transformation and prep is a bit hacky. Redo
-    events_by_geometry = get_event_by_geometry(bids)
-    day_ahead_flex_by_event_day_region = pd.merge(
-        dno_regions,
-        events_by_geometry.query("forecast_type == 'Day Ahead'"),
-        left_on="Name",
-        right_on="dno_region_name",
-        how="inner",
-    ).set_index("date")
-    day_ahead_flex_by_event_day_region = pd.merge(
-        day_ahead_flex_by_event_day_region,
-        dfs_metrics["duration_hours"],
-        left_index=True,
-        right_index=True,
-    )
-    day_ahead_flex_by_event_day_region["flex_mwh"] = (
-        day_ahead_flex_by_event_day_region["value"] * dfs_metrics["duration_hours"]
-    )
-    day_ahead_flex_cumulative_by_region = (
-        day_ahead_flex_by_event_day_region.groupby("dno_region_name")[
-            ["value", "flex_mwh"]
-        ]
-        .agg({"value": "median", "flex_mwh": "sum"})
-        .round()
-    )
-    day_ahead_flex_cumulative_by_region = pd.merge(
-        dno_regions,
-        day_ahead_flex_cumulative_by_region,
-        left_on="Name",
-        right_index=True,
-        how="inner",
-    )
-
+    tab_overall.bar_chart(total_bids_by_date_provider.unstack().round(2))
     render_map(tab_overall, day_ahead_flex_cumulative_by_region)
     render_map(
         tab_latest_event, day_ahead_flex_by_event_day_region.loc[LATEST_DFS_EVENT_DATE]
@@ -232,4 +205,19 @@ def main() -> None:
 
 if __name__ == "__main__":
     page_header()
-    main()
+    # Get all the datasets
+    (
+        event_summary,
+        dfs_metrics,
+        total_bids_by_date_provider,
+        day_ahead_flex_by_event_day_region,
+        day_ahead_flex_cumulative_by_region,
+    ) = get_all_data()
+    # Run the main loop
+    main(
+        event_summary,
+        dfs_metrics,
+        total_bids_by_date_provider,
+        day_ahead_flex_by_event_day_region,
+        day_ahead_flex_cumulative_by_region,
+    )
