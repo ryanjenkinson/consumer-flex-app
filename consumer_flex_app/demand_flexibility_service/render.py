@@ -174,7 +174,7 @@ def render_metrics(
     return None
 
 
-def render_map(tab, gdf: gpd.GeoDataFrame):
+def render_map(tab, gdf: gpd.GeoDataFrame, overall=False):
     gdf = gdf.to_crs("EPSG:4326").sort_values(by="value")
     gdf["fill_color"] = [
         list(255 * x for x in color) for color in sns.color_palette("Blues", len(gdf))
@@ -186,7 +186,6 @@ def render_map(tab, gdf: gpd.GeoDataFrame):
             "GeoJsonLayer",
             data=gdf,
             get_fill_color="fill_color",
-            # get_fill_color="fill_color",
             filled=True,
             pickable=True,
             wireframe=True,
@@ -194,12 +193,16 @@ def render_map(tab, gdf: gpd.GeoDataFrame):
         )
     ]
 
+    tooltip_text = """DNO Region Name: {LongName}
+        - Average total day-ahead forecasted MW reduction: {value}MW
+    """
+    if overall:
+        tooltip_text += "- Total day-ahead procured flexibility: {flex_mwh}MWh"
+
     deck = pdk.Deck(
         layers,
         initial_view_state=INITIAL_VIEW_STATE,
-        tooltip={
-            "text": "DNO Region Name: {LongName}\n - Average total day-ahead forecasted MW reduction: {value}MW\n - Total day-ahead procured flexibility: {flex_mwh}MWh"
-        },
+        tooltip={"text": tooltip_text},
     )
 
     tab.write("# 📌          Flexibility by region")

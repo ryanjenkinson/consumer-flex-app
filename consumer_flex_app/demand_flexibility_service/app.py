@@ -203,7 +203,7 @@ def main(
 
     tab_overall.write("### 🗓️ By date and provider")
     tab_overall.bar_chart(total_bids_by_date_provider.unstack().round(2))
-    render_map(tab_overall, day_ahead_flex_cumulative_by_region)
+    render_map(tab_overall, day_ahead_flex_cumulative_by_region, overall=True)
     render_map(
         tab_latest_event, day_ahead_flex_by_event_day_region.loc[LATEST_DFS_EVENT_DATE]
     )
