@@ -118,12 +118,14 @@ def render_metrics(
             dfs_metrics.dfs_procured_day_ahead_mw
         ).median()
         if overall
-        else dfs_metrics.at[dfs_date_1, "dfs_procured_mw"]
-        or dfs_metrics.at[dfs_date_1, "dfs_procured_day_ahead_mw"]
+        else dfs_metrics.dfs_procured_mw.fillna(
+            dfs_metrics.dfs_procured_day_ahead_mw
+        ).at[dfs_date_1]
     ).round(2)
     procured_mw_2 = (
-        dfs_metrics.at[dfs_date_2, "dfs_procured_mw"]
-        or dfs_metrics.at[dfs_date_2, "dfs_procured_day_ahead_mw"]
+        dfs_metrics.dfs_procured_mw.fillna(dfs_metrics.dfs_procured_day_ahead_mw).at[
+            dfs_date_2
+        ]
     ).round(2)
     procured_mw_delta = None if overall else (procured_mw - procured_mw_2).round(2)
 
