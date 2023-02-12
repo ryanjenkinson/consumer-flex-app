@@ -2,6 +2,7 @@ import datetime
 import gc
 from functools import partial
 
+import pandas as pd
 import streamlit as st
 
 from consumer_flex_app.demand_flexibility_service.extract import (
@@ -60,6 +61,18 @@ def get_all_data():
     dno_regions = get_dno_regions()
     paths = get_dfs_paths()
     bids, requirements, summary = get_dfs_dataframes(paths)
+    # Start: Hotfix for a weird date parse error from ESO data portal.
+    # Some bids on 13th Feb were 13/02/2022 instead of 2022-02-13. TODO: Deal with this better
+    bids["Date"] = pd.to_datetime(bids["Date"], infer_datetime_format=True).dt.strftime(
+        "%Y-%m-%d"
+    )
+    requirements["Delivery Date"] = pd.to_datetime(
+        requirements["Delivery Date"], infer_datetime_format=True
+    ).dt.strftime("%Y-%m-%d")
+    summary["Date"] = pd.to_datetime(
+        summary["Date"], infer_datetime_format=True
+    ).dt.strftime("%Y-%m-%d")
+    # End: Hotfix
     event_summary = get_event_summary(requirements, summary)
     dfs_metrics = get_metrics_by_dfs_event(bids, event_summary)
     total_bids_by_date_provider = get_bids_by_provider_event(bids)
