@@ -8,23 +8,12 @@ import seaborn as sns
 import streamlit as st
 from millify import millify
 
+from consumer_flex_app.demand_flexibility_service.transform import convert_units_energy
+
 gc.enable()
 
 ENERGY_PREFIXES = ["kWh", "MWh", "GWh"]
 POWER_PREFIXES = ["kW", "MW", "GW"]
-
-# Source: https://www.ukpower.co.uk/home_energy/average-household-gas-and-electricity-usage
-# Assumptions: Note that energy use per hour is variable on a number of factors. This is just an estimate!
-# Use 9kWh per day since source says 8-10kWh, and divide equally into hours
-HOUSEHOLD_WH_PER_HOUR = (9 * 1000) / 24
-
-
-# TODO: Move below two functions
-def calculate_homes_powered_for_one_hour(
-    flexibility_wh: float,
-    household_wh_per_hour: int = HOUSEHOLD_WH_PER_HOUR,
-):
-    return math.ceil(flexibility_wh / household_wh_per_hour)
 
 
 def calculate_proportion_of_gb_homes_for_one_hour(
@@ -158,10 +147,10 @@ def render_metrics(
         help="The (average) proportion of the DFS requirement that was met by DFS providers.",
     )
 
-    number_of_homes_powered_for_one_hour = calculate_homes_powered_for_one_hour(
-        flex_procured
+    number_of_homes_powered_for_one_hour = math.ceil(
+        convert_units_energy(flex_procured, "Wh", "Home per hour")
     )
-    if number_of_homes_powered_for_one_hour:
+    if flex_procured:
         tab.write(
             f"""
             That's the equivalent of powering **{number_of_homes_powered_for_one_hour:,}** homes for one hour!
@@ -169,6 +158,17 @@ def render_metrics(
             based on this [source](https://www.ukpower.co.uk/home_energy/average-household-gas-and-electricity-usage)!
             """
         )
+        with tab.expander(
+            "👀 Click to see some other fun comparisons to this amount of flexibility procured"
+        ):
+            st.write(
+                f"""
+                The stats below refer to the flexibility as the energy shifted (in watt-hours), not the power reduced (in watts). If you have any suggestions for fun comparisons, then get in touch!
+
+                - 🔌 **{convert_units_energy(flex_procured, "Wh", "EV Charge"):,.1f}** EV's charging [from 0 - 100% with 40kWh battery]
+                - ☕️ **{convert_units_energy(flex_procured, "Wh", "Cup of Tea"):,.1f}** large cups of tea [from a 3kW kettle, boiling 300ml water for 52 seconds]
+            """
+            )
 
     gc.collect()
     return None

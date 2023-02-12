@@ -1,5 +1,4 @@
 import pandas as pd
-import streamlit as st
 
 _forecast_cols = [
     # Day-ahead forecasts
@@ -57,6 +56,29 @@ DFS_NAME_TO_DNO_NAME_MAPPING = {
     "North Scotland": "_P",
 }
 
+# Everything relative to 1 watt-hour (Wh)
+ENERGY_CONVERSIONS = {
+    "Wh": 1,
+    "kWh": 1e3,
+    "MWh": 1e6,
+    "GWh": 1e9,
+    # Source: https://www.ukpower.co.uk/home_energy/average-household-gas-and-electricity-usage
+    # Assumptions: Note that energy use per hour is variable on a number of factors. This is just an estimate!
+    # Use 9kWh per day since source says 8-10kWh, and divide equally into hours
+    "Home per hour": (9 * 1000) / 24,
+    # Assume a 40kWh battery, e.g a Nissan Leaf
+    "EV Charge": 40_000,
+    # Assume 3kW kettle boiling 300ml water (a large mug) for 52 seconds (Source: uSwitch)
+    "Cup of Tea": 3_000 * 52 / (60 * 60),
+}
+POWER_CONVERSIONS = {
+    "W": 1,
+    "kW": 1e3,
+    "MW": 1e6,
+    "GW": 1e9,
+    "Kettle": 3_000,
+}
+
 
 def _append_settlement_periods(df: pd.DataFrame) -> pd.DataFrame:
     df["settlement_period_start"] = pd.to_datetime(
@@ -68,7 +90,14 @@ def _append_settlement_periods(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-@st.experimental_memo
+def convert_units_energy(value: float, from_units: str, to_units: str) -> float:
+    return value * ENERGY_CONVERSIONS[from_units] / ENERGY_CONVERSIONS[to_units]
+
+
+def convert_units_power(value: float, from_units: str, to_units: str) -> float:
+    return value * POWER_CONVERSIONS[from_units] / POWER_CONVERSIONS[to_units]
+
+
 def get_bids_by_provider_event(bids: pd.DataFrame) -> pd.DataFrame:
     bids_by_provider_settlement_period = (
         bids.pipe(_append_settlement_periods)
