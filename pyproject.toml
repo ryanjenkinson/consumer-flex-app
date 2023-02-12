@@ -7,9 +7,9 @@ readme = "README.md"
 packages = [{include = "consumer_flex_app"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 pandas = "^1.5.3"
-streamlit = "^1.17.0"
+streamlit = "^1.18.0"
 clumper = "^0.2.15"
 meteostat = "^1.6.5"
 geopandas = "^0.12.2"
