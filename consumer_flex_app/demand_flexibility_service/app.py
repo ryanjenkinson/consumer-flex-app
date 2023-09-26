@@ -56,7 +56,7 @@ def page_header() -> None:
 
 
 # Load in the data
-@st.experimental_memo(ttl=datetime.timedelta(hours=1))
+@st.cache_data(ttl=datetime.timedelta(hours=1))
 def get_all_data():
     dno_regions = get_dno_regions()
     paths = get_dfs_paths()
